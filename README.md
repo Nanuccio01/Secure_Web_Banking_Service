@@ -1,1 +1,1 @@
-initial commit
+Il sistema implementa un meccanismo di rate limiting tramite Resilience4j e Spring AOP, limitando i tentativi di autenticazione per prevenire attacchi brute force. Al superamento della soglia configurata, l’API restituisce automaticamente HTTP 429.

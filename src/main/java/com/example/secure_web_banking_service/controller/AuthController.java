@@ -8,6 +8,7 @@ import com.example.secure_web_banking_service.repository.UserRepository;
 import com.example.secure_web_banking_service.security.JwtService;
 import com.example.secure_web_banking_service.security.OtpService;
 import com.example.secure_web_banking_service.security.AesService;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 
 @RestController
 @RequestMapping("/auth")
@@ -43,6 +44,7 @@ public class AuthController {
     }
 
     // ------------------ LOGIN ------------------
+    @RateLimiter(name = "loginLimiter")
     @PostMapping("/login")
     public String login(@RequestBody LoginRequest req) {
 
@@ -63,11 +65,10 @@ public class AuthController {
         // Qui puoi integrare invio via email/SMS
         System.out.println("OTP generata per login: " + otp);
 
-        // JWT temporaneo opzionale se vuoi tracciare sessione preliminare
         return "OTP_SENT"; // risposta al client
     }
 
-    // ------------------ VALIDAZIONE OTP E JWT DEFINITIVO ------------------
+    // ------------------ VALIDAZIONE OTP E JWT  ------------------
     @PostMapping("/validate-otp")
     public String validateOtp(@RequestBody OtpRequest req) {
 
@@ -79,6 +80,7 @@ public class AuthController {
         AppUser u = repo.findByUsername(req.username())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        // Genera JWT standard da usare come token OAuth2/Resource Server
         String token = jwtService.generateToken(u.getUsername(), u.getDeviceId());
 
         // Restituisce il token JWT al client
