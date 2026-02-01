@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: swbs-postgres
+    environment:
+      POSTGRES_USER: swbs
+      POSTGRES_PASSWORD: swbs_pwd
+      POSTGRES_DB: swbs_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - swbs_pgdata:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: swbs-app
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/swbs_db
+      SPRING_DATASOURCE_USERNAME: swbs
+      SPRING_DATASOURCE_PASSWORD: swbs_pwd
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+volumes:
+  swbs_pgdata:
