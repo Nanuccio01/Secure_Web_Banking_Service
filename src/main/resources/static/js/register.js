@@ -1,11 +1,13 @@
 document.getElementById("registerBtn").addEventListener("click", async () => {
     const msg = document.getElementById("msg");
+    const password2 = document.getElementById("password2").value;
 
     const firstNameErr = document.getElementById("firstNameErr");
     const lastNameErr = document.getElementById("lastNameErr");
     const emailErr = document.getElementById("emailErr");
     const phoneErr = document.getElementById("phoneErr");
     const passwordErr = document.getElementById("passwordErr");
+    const password2Err = document.getElementById("password2Err");
 
     // reset
     msg.textContent = "";
@@ -14,6 +16,7 @@ document.getElementById("registerBtn").addEventListener("click", async () => {
     emailErr.textContent = "";
     phoneErr.textContent = "";
     passwordErr.textContent = "";
+    password2Err.textContent = "";
 
     const firstName = document.getElementById("firstName").value.trim();
     const lastName  = document.getElementById("lastName").value.trim();
@@ -37,6 +40,21 @@ document.getElementById("registerBtn").addEventListener("click", async () => {
             return String(Date.now());
         }
     })();
+
+    if (!password) {
+        passwordErr.textContent = "Inserisci la password.";
+        return;
+    }
+
+    if (!password2) {
+        password2Err.textContent = "Reinserisci la password.";
+        return;
+    }
+
+    if (password !== password2) {
+        password2Err.textContent = "Le password non coincidono.";
+        return;
+    }
 
     try {
         const res = await fetch("/auth/register", {

@@ -3,16 +3,16 @@
 :root{
     --bank-blue: #0d47a1;
     --bank-blue-2: #143c75;
-    --bank-bg: #ffffff;
+    --bank-bg: #0d46a0;
     --bank-soft: #f4f6f9;
     --bank-border: #e6edf5;
     --bank-text: #0f172a;
-    --bank-muted: #64748b;
+    --bank-muted: #24396c;
     --bank-success: #16a34a;
 }
 
 body{
-    background: var(--bank-bg);
+    background: var(--bank-muted);
     color: var(--bank-text);
 }
 

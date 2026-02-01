@@ -9,7 +9,7 @@
     <link href="/css/style.css" rel="stylesheet">
 </head>
 
-<body class="d-flex align-items-center justify-content-center vh-100 p-3">
+<body class="d-flex align-items-center justify-content-center vh-100 p-3 bank-bg">
 
 <div class="card bank-card w-100" style="max-width: 420px;">
     <div class="bank-header p-4 text-center">
@@ -45,10 +45,35 @@
         <div class="mb-2 text-start">
             <label class="form-label">Password</label>
             <input id="password" type="password" class="form-control" placeholder="Password" autocomplete="new-password">
-            <div class="form-text">
-                Min 12 caratteri, 1 maiuscola, 1 minuscola, 1 numero, 1 speciale.
-            </div>
             <div id="passwordErr" class="text-danger small mt-1"></div>
+        </div>
+
+        <div class="mb-2 text-start">
+            <label class="form-label">Reinserisci password</label>
+            <input id="password2"
+                   type="password"
+                   class="form-control"
+                   placeholder="Reinserisci password"
+                   autocomplete="new-password">
+            <div id="password2Err" class="text-danger small mt-1"></div>
+        </div>
+
+        <div class="mt-2">
+            <div class="progress" style="height: 8px;">
+                <div id="pwBar" class="progress-bar" role="progressbar" style="width: 0%;"></div>
+            </div>
+            <div class="small mt-1">
+                <span class="bank-muted">Sicurezza password:</span>
+                <span id="pwLabel" class="fw-semibold">—</span>
+            </div>
+
+            <ul class="small bank-muted mt-2 mb-0">
+                <li id="ruleLen">Minimo 12 caratteri</li>
+                <li id="ruleUpper">Almeno 1 lettera maiuscola</li>
+                <li id="ruleLower">Almeno 1 lettera minuscola</li>
+                <li id="ruleDigit">Almeno 1 numero</li>
+                <li id="ruleSpec">Almeno 1 carattere speciale</li>
+            </ul>
         </div>
 
         <button id="registerBtn" class="btn btn-success w-100 mt-2">Registrati</button>
@@ -63,5 +88,76 @@
 
 <script src="/js/device.js"></script>
 <script src="/js/register.js"></script>
+
+<script>
+    function evaluatePassword(pw) {
+        const rules = {
+            len: pw.length >= 12,
+            upper: /[A-Z]/.test(pw),
+            lower: /[a-z]/.test(pw),
+            digit: /\d/.test(pw),
+            spec: /[@$!%*?&#^()_+\-={}[\]:;"'<>,.\/\\|~`]/.test(pw)
+        };
+
+        const score = Object.values(rules).filter(Boolean).length;
+
+        let label = "Molto debole";
+        let percent = 0;
+
+        if (pw.length === 0) { label = "—"; percent = 0; }
+        else if (score <= 1) { label = "Molto debole"; percent = 20; }
+        else if (score === 2) { label = "Debole"; percent = 40; }
+        else if (score === 3) { label = "Media"; percent = 60; }
+        else if (score === 4) { label = "Forte"; percent = 80; }
+        else { label = "Molto forte"; percent = 100; }
+
+        return { rules, label, percent };
+    }
+
+    function setRuleOk(el, ok) {
+        if (!el) return;
+        el.classList.toggle("text-success", ok);
+        el.classList.toggle("text-danger", !ok);
+    }
+
+    function updateStrengthUI(pw) {
+        const bar = document.getElementById("pwBar");
+        const labelEl = document.getElementById("pwLabel");
+        const rLen = document.getElementById("ruleLen");
+        const rUpper = document.getElementById("ruleUpper");
+        const rLower = document.getElementById("ruleLower");
+        const rDigit = document.getElementById("ruleDigit");
+        const rSpec = document.getElementById("ruleSpec");
+
+        if (!bar || !labelEl) return;
+
+        const { rules, label, percent } = evaluatePassword(pw);
+
+        bar.style.width = percent + "%";
+        labelEl.textContent = label;
+
+        bar.classList.remove("bg-danger", "bg-warning", "bg-success");
+        if (percent === 0) {
+            // barra vuota
+        } else if (percent <= 40) bar.classList.add("bg-danger");
+        else if (percent <= 60) bar.classList.add("bg-warning");
+        else bar.classList.add("bg-success");
+
+        setRuleOk(rLen, rules.len);
+        setRuleOk(rUpper, rules.upper);
+        setRuleOk(rLower, rules.lower);
+        setRuleOk(rDigit, rules.digit);
+        setRuleOk(rSpec, rules.spec);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const pwInput = document.getElementById("password");
+        if (!pwInput) return;
+
+        updateStrengthUI(pwInput.value || "");
+        pwInput.addEventListener("input", () => updateStrengthUI(pwInput.value));
+    });
+</script>
+
 </body>
 </html>
