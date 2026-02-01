@@ -1,66 +1,70 @@
 package com.example.secure_web_banking_service.security;
 
-import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
-import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
-import java.util.Base64;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.util.Base64;
 
-// Servizio per cifrare e decifrare dati sensibili con AES-GCM
 @Service
 public class AesService {
 
-    private SecretKey key;               // chiave segreta AES
-    private final int IV_SIZE = 12;      // IV per GCM
-    private final int TAG_LENGTH_BIT = 128;
+    // Chiave AES 16/24/32 bytes (qui usiamo 32)
+    private final byte[] keyBytes;
 
-    private final SecureRandom random = new SecureRandom();
-
-    // Inizializza chiave AES
-    @PostConstruct
-    public void init() throws Exception {
-        KeyGenerator generator = KeyGenerator.getInstance("AES");
-        generator.init(256); // AES-256
-        key = generator.generateKey();
+    public AesService(@Value("${app.crypto.aes-key}") String aesKey) {
+        // deve essere esattamente 32 caratteri (32 bytes in UTF-8)
+        this.keyBytes = aesKey.getBytes(StandardCharsets.UTF_8);
     }
 
-    // ------------------ CIFRA ------------------
-    public String encrypt(String data) throws Exception {
-        byte[] iv = new byte[IV_SIZE];
-        random.nextBytes(iv);
+    // AES/GCM: cifratura autenticata (consigliata)
+    public String encrypt(String plainText) {
+        try {
+            byte[] iv = new byte[12];
+            new SecureRandom().nextBytes(iv);
 
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        GCMParameterSpec spec = new GCMParameterSpec(TAG_LENGTH_BIT, iv);
-        cipher.init(Cipher.ENCRYPT_MODE, key, spec);
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
 
-        byte[] encrypted = cipher.doFinal(data.getBytes());
-        byte[] encryptedIvAndData = new byte[iv.length + encrypted.length];
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, gcmSpec);
+            byte[] ciphertext = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
 
-        System.arraycopy(iv, 0, encryptedIvAndData, 0, iv.length);
-        System.arraycopy(encrypted, 0, encryptedIvAndData, iv.length, encrypted.length);
+            // output = iv + ciphertext
+            byte[] out = new byte[iv.length + ciphertext.length];
+            System.arraycopy(iv, 0, out, 0, iv.length);
+            System.arraycopy(ciphertext, 0, out, iv.length, ciphertext.length);
 
-        return Base64.getEncoder().encodeToString(encryptedIvAndData);
+            return Base64.getEncoder().encodeToString(out);
+        } catch (Exception e) {
+            throw new RuntimeException("AES encrypt failed", e);
+        }
     }
 
-    // ------------------ DECIFRA ------------------
-    public String decrypt(String encryptedData) throws Exception {
-        byte[] decoded = Base64.getDecoder().decode(encryptedData);
+    public String decrypt(String base64) {
+        try {
+            byte[] in = Base64.getDecoder().decode(base64);
 
-        byte[] iv = new byte[IV_SIZE];
-        byte[] encrypted = new byte[decoded.length - IV_SIZE];
+            byte[] iv = new byte[12];
+            byte[] ciphertext = new byte[in.length - 12];
 
-        System.arraycopy(decoded, 0, iv, 0, IV_SIZE);
-        System.arraycopy(decoded, IV_SIZE, encrypted, 0, encrypted.length);
+            System.arraycopy(in, 0, iv, 0, 12);
+            System.arraycopy(in, 12, ciphertext, 0, ciphertext.length);
 
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        GCMParameterSpec spec = new GCMParameterSpec(TAG_LENGTH_BIT, iv);
-        cipher.init(Cipher.DECRYPT_MODE, key, spec);
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
 
-        byte[] decrypted = cipher.doFinal(encrypted);
-        return new String(decrypted);
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, gcmSpec);
+            byte[] plain = cipher.doFinal(ciphertext);
+
+            return new String(plain, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            throw new RuntimeException("AES decrypt failed", e);
+        }
     }
 }

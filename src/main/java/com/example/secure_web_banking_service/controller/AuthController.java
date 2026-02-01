@@ -1,14 +1,16 @@
 package com.example.secure_web_banking_service.controller;
 
-import org.springframework.web.bind.annotation.*;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import com.example.secure_web_banking_service.dto.*;
+import com.example.secure_web_banking_service.dto.LoginRequest;
+import com.example.secure_web_banking_service.dto.RegisterRequest;
 import com.example.secure_web_banking_service.model.AppUser;
 import com.example.secure_web_banking_service.repository.UserRepository;
-import com.example.secure_web_banking_service.security.JwtService;
-import com.example.secure_web_banking_service.security.OtpService;
 import com.example.secure_web_banking_service.security.AesService;
-import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import com.example.secure_web_banking_service.security.IbanService;
+import com.example.secure_web_banking_service.security.JwtService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
@@ -17,105 +19,102 @@ public class AuthController {
     private final UserRepository repo;
     private final PasswordEncoder encoder;
     private final JwtService jwtService;
-    private final OtpService otpService;
     private final AesService aesService;
+    private final IbanService ibanService;
 
-    public AuthController(UserRepository repo,
-                          PasswordEncoder encoder,
-                          JwtService jwtService,
-                          OtpService otpService,
-                          AesService aesService) {
+    public AuthController(
+            UserRepository repo,
+            PasswordEncoder encoder,
+            JwtService jwtService,
+            AesService aesService,
+            IbanService ibanService
+    ) {
         this.repo = repo;
         this.encoder = encoder;
         this.jwtService = jwtService;
-        this.otpService = otpService;
         this.aesService = aesService;
+        this.ibanService = ibanService;
     }
 
     // ------------------ REGISTER ------------------
+    // Registra utente con: nome, cognome, email, telefono, password
+    // - Email in chiaro (normalizzata) per login e vincolo unique
+    // - Nome/Cognome/Telefono/ saldo cifrati AES (PII)
+    // - Password hashata BCrypt
+    // - IBAN fake valido generato e univoco
     @PostMapping("/register")
-    public String register(@RequestBody RegisterRequest req) {
+    public String register(@Valid @RequestBody RegisterRequest req, HttpServletRequest request) {
+
+        // normalizza email
+        String emailNorm = req.email().trim().toLowerCase();
+
+        // email unica
+        if (repo.existsByEmail(emailNorm)) {
+            return "EMAIL_TAKEN";
+        }
+
         AppUser u = new AppUser();
-        u.setUsername(req.username());
+
+        // email in chiaro (serve per login)
+        u.setEmail(emailNorm);
+
+        // password hashata
         u.setPasswordHash(encoder.encode(req.password()));
-        u.setDeviceId(req.deviceId());
+
+        // Cifra nome, cognome e telefono
+        u.setEncryptedFirstName(aesService.encrypt(req.firstName().trim()));
+        u.setEncryptedLastName(aesService.encrypt(req.lastName().trim()));
+        u.setEncryptedPhone(aesService.encrypt(req.phone().trim()));
+
+        // genera IBAN fake univoco
+        String iban;
+        do {
+            iban = ibanService.generateItalianIban();
+        } while (repo.existsByIban(iban));
+        u.setIban(iban);
+
+        // saldo iniziale 50.00 (cifrato)
+        u.setEncryptedBalance(aesService.encrypt("50.00"));
+
+        String deviceId = request.getHeader("X-Device-Id");
+        if (deviceId == null || deviceId.isBlank()) {
+            // fallback (non dovrebbe succedere se frontend ok)
+            deviceId = java.util.UUID.randomUUID().toString();
+        }
+
+        u.setDeviceId(deviceId);
+
+        // salva utente
         repo.save(u);
+
         return "REGISTER_OK";
     }
 
     // ------------------ LOGIN ------------------
-    @RateLimiter(name = "loginLimiter")
+    // Login con email + password
+    // Ritorna JWT (subject = email) che poi il frontend salva in cookie "jwt"
     @PostMapping("/login")
-    public String login(@RequestBody LoginRequest req) {
+    public String login(@Valid @RequestBody LoginRequest req, HttpServletRequest request) {
 
-        AppUser u = repo.findByUsername(req.username())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String emailNorm = req.email().trim().toLowerCase();
+
+        String deviceId = request.getHeader("X-Device-Id");
+        if (deviceId == null || deviceId.isBlank()) {
+            deviceId = java.util.UUID.randomUUID().toString();
+        }
+
+        AppUser u = repo.findByEmail(emailNorm)
+                .orElseThrow(() -> new RuntimeException("USER_NOT_FOUND"));
 
         if (!encoder.matches(req.password(), u.getPasswordHash())) {
-            throw new RuntimeException("Bad credentials");
+            throw new RuntimeException("BAD_CREDENTIALS");
         }
 
-        if (!u.getDeviceId().equals(req.deviceId())) {
-            throw new RuntimeException("Unrecognized device");
-        }
-
-        // Invia OTP all’utente dopo login corretto
-        String otp = otpService.generateOtp(u.getUsername());
-
-        // Qui puoi integrare invio via email/SMS
-        System.out.println("OTP generata per login: " + otp);
-
-        return "OTP_SENT"; // risposta al client
-    }
-
-    // ------------------ VALIDAZIONE OTP E JWT  ------------------
-    @PostMapping("/validate-otp")
-    public String validateOtp(@RequestBody OtpRequest req) {
-
-        boolean valid = otpService.validateOtp(req.username(), req.otp());
-
-        if (!valid) return "OTP_INVALID";
-
-        // OTP valida → rilascia JWT definitivo
-        AppUser u = repo.findByUsername(req.username())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        // Genera JWT standard da usare come token OAuth2/Resource Server
-        String token = jwtService.generateToken(u.getUsername(), u.getDeviceId());
-
-        // Restituisce il token JWT al client
-        return token;
-    }
-
-    // Endpoint per aggiornare saldo cifrato
-    @PostMapping("/update-balance")
-    public String updateBalance(@RequestParam String username, @RequestParam double amount) throws Exception {
-
-        AppUser u = repo.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        // cifra il saldo come stringa
-        String encrypted = aesService.encrypt(String.valueOf(amount));
-        u.setEncryptedBalance(encrypted);
+        // salva device in DB (se vuoi “un device unico per account”)
+        u.setDeviceId(deviceId);
         repo.save(u);
 
-        return "BALANCE_UPDATED";
-    }
-
-    // Endpoint per leggere saldo decifrato
-    @GetMapping("/get-balance")
-    public String getBalance(@RequestParam String username) throws Exception {
-
-        AppUser u = repo.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        String decrypted = aesService.decrypt(u.getEncryptedBalance());
-        return decrypted;
-    }
-
-    // ------------------ ENDPOINT PROTETTO ------------------
-    @GetMapping("/secure")
-    public String secureTest() {
-        return "ACCESS_GRANTED";
+        // JWT subject = email
+        return jwtService.generateToken(u.getEmail());
     }
 }

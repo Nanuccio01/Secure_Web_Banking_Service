@@ -1,0 +1,105 @@
+/* ===== Secure Web Banking – Clean White Banking Theme ===== */
+
+:root{
+    --bank-blue: #0d47a1;
+    --bank-blue-2: #143c75;
+    --bank-bg: #ffffff;
+    --bank-soft: #f4f6f9;
+    --bank-border: #e6edf5;
+    --bank-text: #0f172a;
+    --bank-muted: #64748b;
+    --bank-success: #16a34a;
+}
+
+body{
+    background: var(--bank-bg);
+    color: var(--bank-text);
+}
+
+/* contenitore centrato */
+.bank-shell{
+    width: 100%;
+    max-width: 520px;
+}
+
+/* card “premium” */
+.bank-card{
+    border: 1px solid var(--bank-border);
+    border-radius: 18px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+    overflow: hidden;
+}
+
+/* header con leggero gradiente interno */
+.bank-top{
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border-bottom: 1px solid var(--bank-border);
+}
+
+.app-title{
+    font-weight: 900;
+    letter-spacing: .2px;
+    color: var(--bank-blue);
+}
+
+.bank-subtitle{
+    color: var(--bank-muted);
+}
+
+.bank-chip{
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(13,71,161,.08);
+    color: var(--bank-blue);
+    border: 1px solid rgba(13,71,161,.18);
+}
+
+/* box saldo */
+.balance-box{
+    background: #0d47a1;
+    color: #fff;
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: 0 10px 22px rgba(13,71,161,.22);
+}
+
+.balance-label{
+    opacity: .85;
+    font-size: 13px;
+}
+
+.balance-amount{
+    font-size: 34px;
+    font-weight: 900;
+    letter-spacing: .2px;
+    margin: 4px 0 0;
+}
+
+/* pannelli */
+.bank-panel{
+    border: 1px solid var(--bank-border);
+    border-radius: 16px;
+    background: #ffffff;
+    padding: 16px;
+}
+
+.bank-muted{
+    color: var(--bank-muted) !important;
+}
+
+/* righe “recent activity” */
+.bank-row{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-top: 1px solid var(--bank-border);
+}
+.bank-row:first-child{ border-top: 0; }
+
+.badge-soft-success{
+    background: rgba(22,163,74,.12);
+    color: var(--bank-success);
+    border: 1px solid rgba(22,163,74,.22);
+}
