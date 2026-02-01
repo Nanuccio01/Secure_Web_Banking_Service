@@ -1,8 +1,26 @@
-FUNZIONALITA' ON
+# Secure Web Banking Service
 
-Requisiti: Docker Desktop
-- Avvio: docker compose up --build
-- URL: http://localhost:8080
+Requisiti:
+- Docker Desktop
+
+Avvio (Windows / macOS / Linux):
+1) Aprire un terminale nella cartella del progetto
+2) Eseguire:
+   docker compose up --build
+
+App:
+- http://localhost:8080/register.html
+- http://localhost:8080/login.html
+- http://localhost:8080/home
+
+Stop:
+- docker compose down
+
+Reset DB (cancella dati):
+- docker compose down -v
+
+
+FUNZIONALITà ON:
 
 Autenticazione e identità:
 - Registrazione con: nome, cognome, email, telefono, password.
