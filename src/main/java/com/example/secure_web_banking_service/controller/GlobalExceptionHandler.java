@@ -3,6 +3,9 @@ package com.example.secure_web_banking_service.controller;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
+import org.springframework.http.ResponseEntity;
+
 
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -24,5 +27,11 @@ public class GlobalExceptionHandler {
                 "error", "VALIDATION_ERROR",
                 "fields", errors
         );
+    }
+
+    @ExceptionHandler(RequestNotPermitted.class)
+    public ResponseEntity<Map<String, String>> handleRateLimit(RequestNotPermitted ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(Map.of("error", "RATE_LIMIT"));
     }
 }

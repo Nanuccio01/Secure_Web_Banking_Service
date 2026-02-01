@@ -7,6 +7,7 @@ import com.example.secure_web_banking_service.repository.TransactionRepository;
 import com.example.secure_web_banking_service.repository.UserRepository;
 import com.example.secure_web_banking_service.security.AesService;
 import com.example.secure_web_banking_service.security.JwtService;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -116,6 +117,7 @@ public class AccountController {
     // ------------------ /transfer ------------------
     // Bonifico tramite IBAN: mittente = utente loggato, destinatario = utente con IBAN in DB
     // Aggiorna saldo mittente/destinatario (AES) e salva una Transaction
+    @RateLimiter(name = "transferLimiter")
     @Transactional
     @PostMapping("/transfer")
     public Map<String, String> transfer(HttpServletRequest request,

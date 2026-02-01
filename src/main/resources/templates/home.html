@@ -179,6 +179,12 @@
                 body: JSON.stringify({ toIban, amount: amountNum.toFixed(2), memo })
             });
 
+            //Rate Limiter bonifici
+            if (res.status === 429) {
+                err.textContent = "Troppi bonifici in poco tempo. Riprova tra poco.";
+                return;
+            }
+
             const data = await res.json().catch(() => null);
 
             if (!data || data.error){

@@ -7,6 +7,7 @@ import com.example.secure_web_banking_service.repository.UserRepository;
 import com.example.secure_web_banking_service.security.AesService;
 import com.example.secure_web_banking_service.security.IbanService;
 import com.example.secure_web_banking_service.security.JwtService;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -93,6 +94,7 @@ public class AuthController {
     // ------------------ LOGIN ------------------
     // Login con email + password
     // Ritorna JWT (subject = email) che poi il frontend salva in cookie "jwt"
+    @RateLimiter(name = "loginLimiter")
     @PostMapping("/login")
     public String login(@Valid @RequestBody LoginRequest req, HttpServletRequest request) {
 

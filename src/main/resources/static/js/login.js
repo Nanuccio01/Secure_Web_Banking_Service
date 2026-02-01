@@ -39,16 +39,22 @@ document.getElementById("loginBtn").addEventListener("click", async () => {
             body: JSON.stringify({ email, password })
         });
 
+        //Rate limiter login
+        if (res.status === 429) {
+            msg.textContent = "Troppi tentativi. Riprova tra poco";
+            return;
+        }
+
         // validazione input
         if (res.status === 400) {
             const data = await res.json().catch(() => null);
             if (data && data.error === "VALIDATION_ERROR" && data.fields) {
                 if (data.fields.email) emailErr.textContent = data.fields.email;
                 if (data.fields.password) passwordErr.textContent = data.fields.password;
-                msg.textContent = "Controlla i campi evidenziati.";
+                msg.textContent = "Controlla i campi evidenziati";
                 return;
             }
-            msg.textContent = "Richiesta non valida.";
+            msg.textContent = "Richiesta non valida";
             return;
         }
 
@@ -63,7 +69,7 @@ document.getElementById("loginBtn").addEventListener("click", async () => {
         }
 
         //credenziali errate
-        msg.textContent = "Credenziali errate.";
+        msg.textContent = "Credenziali errate";
     } catch (e) {
         msg.textContent = "Errore di rete: " + (e && e.message ? e.message : e);
     }
